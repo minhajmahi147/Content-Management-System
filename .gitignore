@@ -1,32 +1,32 @@
-# Virtual environment
+# Virtual environments
+venv/
 .venv/
 env/
-*.env
-.venv
-*.venv
 
-# Django specific
+# Environment variables
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Django
 *.log
 *.pot
-*.pyc
-*.pyo
-__pycache__/
-*.~*
+db.sqlite3
+media/
+staticfiles/
+
+# Testing / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
 *.swp
 *.swo
-.env
-.vscode/
-
-# Byte-compiled / optimized / DLL files
-*.pyc
-*.pyo
-*.pyd
-__pycache__/
-*.so
-.pyc
-# Coverage
-.coverage
-
-# Ignore all migrations except __init__.py
-properties/migrations/*
-!properties/migrations/__init__.py
+.DS_Store
