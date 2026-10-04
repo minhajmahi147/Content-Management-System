@@ -39,19 +39,30 @@ docker compose exec web python manage.py createsuperuser
 
 ### Run locally
 
-Requires a running PostgreSQL instance.
+Requires Python 3.10. Uses a local SQLite file (`db.sqlite3`) by default.
 
 ```bash
-python -m venv venv
+python3.10 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-export POSTGRES_HOST=localhost   # defaults: db / cms_db / mahi / mahi123 / 5432
 python manage.py migrate
 python manage.py runserver
 ```
 
-Database settings are read from `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD` (see `cms_project/config.py`).
+To use PostgreSQL instead, set `POSTGRES_HOST` (plus optionally `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`). See `cms_project/config.py`.
+
+### Frontend (Next.js)
+
+With the API running on port 8000:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. Set `NEXT_PUBLIC_API_URL` to point at a different API URL.
 
 ## Authentication
 

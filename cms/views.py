@@ -8,6 +8,7 @@ from .serializers import  ContentSerializer, FeedbackSerializer
 from .serializers import UserCreateSerializer, WriterListSerializer,UserSerializer
 from django.contrib.auth import login
 from django.contrib.auth import logout
+from django.db.models import Q
 from rest_framework.views import APIView
 from .serializers import LoginSerializer
 from django.views.decorators.csrf import csrf_exempt
@@ -98,11 +99,11 @@ class UserViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            # Allow only unassigned writers (managed_by = NULL)
+            # Allow unassigned writers or writers already managed by this admin
             writer = User.objects.get(
+                Q(managed_by__isnull=True) | Q(managed_by=manager),
                 id=writer_id,
                 role=User.CONTENT_WRITER,
-                managed_by__isnull=True  # Check for unassigned writers
             )
         except User.DoesNotExist:
             return Response(
@@ -251,57 +252,6 @@ class ContentViewSet(viewsets.ModelViewSet):
             )
         content.approve()
         return Response({"status": "Content approved"})
-    
-
-
-    @action(detail=False, methods=['post'], permission_classes=[IsAdmin])
-    def assign_to_writer(self, request):
-        """Assign content to a writer"""
-        manager = request.user  # Logged-in admin
-        writer_id = request.data.get('writer_id')
-        title = request.data.get('title')
-        content_text = request.data.get('content')
-    
-
-    
-
-    # Validate input
-        if not writer_id or not title or not content_text:
-            return Response(
-                {"error": "writer_id, title, and content are required"},
-                status=status.HTTP_400_BAD_REQUEST
-        )
-
-        try:
-            # Allow only unassigned writers (managed_by = NULL)
-            writer = User.objects.get(
-            id=writer_id,
-            role=User.CONTENT_WRITER,
-            managed_by__isnull=True  # Check for unassigned writers
-        )
-        except User.DoesNotExist:
-            return Response(
-            {"error": "Invalid writer ID or writer is not managed by you"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    # Assign the writer and create content
-        content = Content.objects.create(
-        title=title,
-        content=content_text,
-        status=Content.ASSIGNED,
-        writter=writer,
-        manager=manager
-     )
-
-    # Assign the writer to this admin
-        writer.managed_by = manager
-        writer.save()
-
-        return Response({
-        "message": "Content created and assigned to writer",
-        "content": ContentSerializer(content).data
-        }, status=status.HTTP_201_CREATED)
 
 
 class FeedbackViewSet(viewsets.ModelViewSet):
