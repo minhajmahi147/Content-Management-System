@@ -1,8 +1,8 @@
 # Content Management System
 
-A REST API for managing content between **admins** and **content writers**, built with Django, Django REST Framework, JWT authentication and PostgreSQL.
+A REST API for managing content between **admins**, **content managers** and **content writers**, built with Django, Django REST Framework, JWT authentication and PostgreSQL.
 
-Admins manage writers, assign content to them, leave feedback and approve finished work. Writers work on their assigned content and submit it for review.
+Admins see every writer and content manager and assign writers to content managers. Content managers assign content to the writers on their team, leave feedback and approve finished work. Writers work on their assigned content and submit it for review.
 
 ## Content workflow
 
@@ -78,19 +78,22 @@ Tokens can also be obtained and refreshed via `/api/token/` and `/api/token/refr
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
-| POST | `/api/users/` | Register a user (admin or writer) |
+| POST | `/api/users/` | Register a user (`admin`, `manager` or `writer`) |
 | POST | `/login/` | Log in |
 | POST | `/logout/` | Log out |
 | GET  | `/api/users/current/` | Current user |
-| GET  | `/api/users/writers/` | All writers (admin only) |
-| GET  | `/api/users/unassigned_writers/` | Writers without a manager |
-| POST | `/api/users/assign_to_writer/` | Assign content to a writer (admin only) |
+| GET  | `/api/users/writers/` | All writers (admin) or the manager's own team (content manager) |
+| GET  | `/api/users/managers/` | All content managers (admin only) |
+| POST | `/api/users/{id}/assign_manager/` | Assign a writer to a content manager (admin only) |
+| POST | `/api/users/{id}/change_role/` | Change a user's role (admin only) |
 | GET  | `/api/contents/` | List contents |
+| POST | `/api/contents/` | Assign content to a writer on your team (content manager only) |
 | GET  | `/api/contents/{id}/` | Content detail |
-| POST | `/api/contents/{id}/set_in_progress/` | Mark content as in progress |
+| POST | `/api/contents/{id}/set_in_progress/` | Mark content as in progress (writer only) |
 | POST | `/api/contents/{id}/submit_for_review/` | Submit for review (writer only) |
-| POST | `/api/contents/{id}/approve/` | Approve content (admin only) |
-| POST | `/api/feedbacks/` | Leave feedback on content |
+| POST | `/api/contents/{id}/approve/` | Approve content (content manager only) |
+| POST | `/api/contents/{id}/move/` | Move content to any status, body `{"status": "..."}` (content manager only) |
+| POST | `/api/feedbacks/` | Leave feedback on content (content manager only) |
 
 ### Example requests
 
@@ -112,10 +115,16 @@ Login:
 { "username": "new_writer", "password": "mahi1234" }
 ```
 
-Assign content to a writer:
+Assign a writer to a content manager (admin):
 
 ```json
-{ "writer_id": 2, "title": "Test Article", "content": "This is a test article." }
+{ "manager_id": 4 }
+```
+
+Assign content to a writer (content manager):
+
+```json
+{ "writter": 2, "title": "Test Article", "content": "This is a test article." }
 ```
 
 Feedback:
