@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -7,10 +7,12 @@ import uuid
 
 class User(AbstractUser):
     ADMIN = 'admin'
+    CONTENT_MANAGER = 'manager'
     CONTENT_WRITER = 'writer'
 
     ROLE_CHOICES = [
         (ADMIN, 'Admin'),
+        (CONTENT_MANAGER, 'Content Manager'),
         (CONTENT_WRITER, 'Content Writer'),
     ]
     token = models.CharField(max_length=500, default=str(uuid.uuid4()), blank=True ,null=True)
@@ -21,28 +23,25 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name='writers',
-        limit_choices_to={'role': ADMIN}
+        limit_choices_to={'role': CONTENT_MANAGER}
     )
 
     def is_admin(self):
         return self.role == self.ADMIN
 
+    def is_content_manager(self):
+        return self.role == self.CONTENT_MANAGER
+
     def is_content_writer(self):
         return self.role == self.CONTENT_WRITER
 
     def save(self, *args, **kwargs):
-        if self.role == self.ADMIN and self.managed_by is not None:
-            raise ValidationError("Admin users cannot be managed by other users")
+        if self.managed_by and not self.is_content_writer():
+            raise ValidationError("Only writers can be assigned to a content manager")
 
-        if self.managed_by and not self.managed_by.is_admin():
-            raise ValidationError("Writers can only be managed by admin users")
+        if self.managed_by and not self.managed_by.is_content_manager():
+            raise ValidationError("Writers can only be assigned to content managers")
         super().save(*args, **kwargs)
-
-    def get_managed_writers(self):
-        """Get all writers managed by this admin"""
-        if not self.is_admin():
-            return User.objects.none()
-        return self.writers.all()
 
 
 class Content(models.Model):
@@ -71,27 +70,41 @@ class Content(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='assigned_by_contents',
-        limit_choices_to={'role': User.ADMIN}
+        limit_choices_to={'role': User.CONTENT_MANAGER}
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     approved_at = models.DateTimeField(null=True, blank=True)
 
     def clean(self):
-        # Ensure the assigned writer is managed by the assigning admin
         if self.writter and self.manager:
             if self.writter.managed_by != self.manager:
                 raise ValidationError(
-                    "Content can only be assigned to writers managed by the assigning admin"
+                    "Content can only be assigned to writers on the content manager's team"
                 )
 
-    def approve(self):
-        self.status = self.APPROVED
-        self.approved_at = timezone.now()
+    @transaction.atomic
+    def set_status(self, new_status, user):
+        old = self.status
+        self.status = new_status
+        if new_status == self.APPROVED:
+            self.approved_at = timezone.now()
         self.save()
+        self.history.create(from_status=old, to_status=new_status, changed_by=user)
 
     class Meta:
         ordering = ['-created_at']
+
+
+class StatusChange(models.Model):
+    content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='history')
+    from_status = models.CharField(max_length=20, choices=Content.STATUS_CHOICES, blank=True)
+    to_status = models.CharField(max_length=20, choices=Content.STATUS_CHOICES)
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
 
 
 class Feedback(models.Model):
@@ -100,15 +113,14 @@ class Feedback(models.Model):
     manager = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        limit_choices_to={'role': User.ADMIN}
+        limit_choices_to={'role': User.CONTENT_MANAGER}
     )
-    created_at = models.DateTimeField(auto_now_add=True)  # Renamed from `writer`
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        # Ensure feedback is only created by the admin managing the content's writer
-        if self.content.writter.managed_by != self.manager:
+        if self.content.manager != self.manager:
             raise ValidationError(
-                "Feedback can only be provided by the admin managing the content writer"
+                "Feedback can only be provided by the content manager who assigned the content"
             )
 
     class Meta:

@@ -25,7 +25,7 @@ export default function Register() {
       <form onSubmit={submit} className="card">
         <div className="brand"><span className="logo">CMS</span></div>
         <h1>Create an account</h1>
-        <p className="muted subtitle">Join as a writer or an admin</p>
+        <p className="muted subtitle">Join as a writer, content manager or admin</p>
         <label>Username<input name="username" required autoFocus /></label>
         <label>Email<input name="email" type="email" required /></label>
         <label>Password<input name="password" type="password" required /></label>
@@ -34,6 +34,7 @@ export default function Register() {
           Role
           <select name="role" defaultValue="writer">
             <option value="writer">Content Writer</option>
+            <option value="manager">Content Manager</option>
             <option value="admin">Admin</option>
           </select>
         </label>

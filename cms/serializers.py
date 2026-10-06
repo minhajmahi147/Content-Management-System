@@ -1,8 +1,6 @@
 from rest_framework import serializers
-from .models import User, Content, Feedback
+from .models import User, Content, Feedback, StatusChange
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
-from .models import User, Content, Feedback
 from django.contrib.auth import authenticate
 
 
@@ -11,7 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role', 'managed_by']
-        read_only_fields = ['role']
+        read_only_fields = ['role', 'managed_by']
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
@@ -19,26 +17,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'password_confirm', 'role', 'managed_by')
-        extra_kwargs = {
-            'managed_by': {'required': False},
-            'role': {'required': True}
-        }
+        fields = ('id', 'username', 'email', 'password', 'password_confirm', 'role')
+        extra_kwargs = {'role': {'required': True}}
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
-        
-        # Validate role and managed_by relationship
-        role = attrs.get('role')
-        managed_by = attrs.get('managed_by')
-        
-        # if role == User.CONTENT_WRITER and not managed_by:
-        #     raise serializers.ValidationError({"managed_by": "Content writers must have a managing admin."})
-        
-        if role == User.ADMIN and managed_by:
-            raise serializers.ValidationError({"managed_by": "Admin users cannot have a manager."})
-
         return attrs
 
     def create(self, validated_data):
@@ -56,23 +40,41 @@ class WriterListSerializer(serializers.ModelSerializer):
     def get_assigned_contents_count(self, obj):
         return obj.assigned_contents.count()
 
+class StatusChangeSerializer(serializers.ModelSerializer):
+    changed_by = serializers.StringRelatedField()
+
+    class Meta:
+        model = StatusChange
+        fields = ['id', 'from_status', 'to_status', 'changed_by', 'created_at']
+
 class ContentSerializer(serializers.ModelSerializer):
     feedbacks = serializers.SerializerMethodField()
+    history = StatusChangeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Content
         fields = ['id', 'title', 'content', 'status', 'writter', 'manager', 
-                 'created_at', 'updated_at', 'approved_at', 'feedbacks']
-        read_only_fields = ['manager', 'approved_at']
+                 'created_at', 'updated_at', 'approved_at', 'feedbacks', 'history']
+        read_only_fields = ['status', 'manager', 'approved_at']
 
     def get_feedbacks(self, obj):
         return FeedbackSerializer(obj.feedbacks.all(), many=True).data
+
+    def validate_writter(self, writer):
+        if writer.managed_by != self.context['request'].user:
+            raise serializers.ValidationError("This writer is not on your team. Ask an admin to assign them to you.")
+        return writer
 
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = ['id', 'content', 'comment', 'manager', 'created_at']
         read_only_fields = ['manager']
+
+    def validate_content(self, content):
+        if content.manager != self.context['request'].user:
+            raise serializers.ValidationError("You can only give feedback on content you assigned.")
+        return content
 
 
 
