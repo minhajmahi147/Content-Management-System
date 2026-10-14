@@ -32,13 +32,13 @@ DATABASES = DATABASES
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-vwilt(#2i+=jhfi)b*=ne33nqc2v)w2(0eqjd$7#isvk40pf2@'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = ["*"]
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ['SECRET_KEY'] if not DEBUG else os.environ.get('SECRET_KEY', 'dev-only-not-secret')
+
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -76,8 +76,9 @@ MIDDLEWARE = [
     
 ]
 
-# Allow all origins (for development purposes)
-CORS_ALLOW_ALL_ORIGINS = True
+# Allow all origins locally; set CORS_ALLOWED_ORIGINS in production
+CORS_ALLOWED_ORIGINS = [o for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o]
+CORS_ALLOW_ALL_ORIGINS = not CORS_ALLOWED_ORIGINS
 
 ROOT_URLCONF = 'cms_project.urls'
 
@@ -160,6 +161,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

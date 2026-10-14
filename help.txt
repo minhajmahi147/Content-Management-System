@@ -13,3 +13,24 @@ source venv/bin/activate
 pip install -r requirements.txt   # only needed the first time
 python manage.py migrate
 python manage.py runserver
+
+
+
+things can be approved:
+Lightweight, mostly browser-built-in
+
+Kanban board. Show content as columns (Not started, Writing, Review, Approved). Content managers drag cards between columns, and writers drag their own cards to "Review" to submit. Browsers have drag-and-drop built in, so no library is needed.
+Writing replay. Record each draft save with a timestamp, then let the content manager press play and watch the article being written, like a time-lapse. It's very little backend work: one small model with a timestamp and the text.
+Visual diff after feedback. When a writer resubmits, the content manager sees what changed in red and green, so they don't have to reread everything. Python's built-in difflib handles the comparison.
+Voice dictation and read-aloud. Writers can dictate drafts using the browser's built-in speech recognition. Content managers can have a submission read aloud using the browser's built-in text-to-speech. Neither needs a library or a paid API.
+Focus mode. A full-screen editor with a word-count goal, a Pomodoro timer and a progress ring. The writer sees their target and the content manager sees time spent.
+Engagement
+
+Writer leaderboard and streaks. Award points for on-time approvals, give a 🔥 badge for each day in a row with an approval, and show a monthly top writer on the admin dashboard. Approval times are already in StatusChange.
+Open task board. Content managers post tasks without picking a writer, and writers on their team claim them first come, first served.
+Bigger projects
+
+Live presence. The content manager sees "✍️ writing now…" and the article updating live while the writer types. This uses WebSockets through Django Channels.
+Comments on highlighted text. The content manager selects a sentence and leaves a note on it, like Google Docs. This replaces the current single feedback box.
+AI pre-review. Before submitting, the writer gets an automatic check for grammar, tone and readability. It needs an external AI API, which makes it the only idea here that adds a dependency.
+Public publishing. Approved content gets a public page and an RSS feed, turning the system into a real blog pipeline.

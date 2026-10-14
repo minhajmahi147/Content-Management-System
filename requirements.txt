@@ -5,5 +5,6 @@ django-ckeditor
 django_extensions
 djangorestframework-simplejwt
 django-cors-headers
+gunicorn
 # djangorestframework-simplejwt
 # Add any other dependencies your project needs
